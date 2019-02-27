@@ -1,0 +1,9 @@
+signature MATRIX =
+sig
+    type matrix
+end
+
+structure Matrix : MATRIX =
+struct
+    type matrix = int array array
+end
