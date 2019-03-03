@@ -4,6 +4,9 @@ sig
     val dsigmoid : real -> real
     val tanh : real -> real
     val dtanh : real -> real
+    val sigmoidf : real -> real
+    val sigmoidh : real -> real
+    val sigmoidg : real -> real
 end
 
 structure Nonlinear =
@@ -19,4 +22,10 @@ fun dtanh (y: real) : real =
     in
         1.0 - y'*y'
     end
+fun sigmoidf (x: real) : real =
+    1.0 / (1.0 + (Math.exp (~x)))
+fun sigmoidh (x: real) : real =
+    2.0 / (1.0 + (Math.exp (~x))) - 1.0
+fun sigmoidg (x: real) : real =
+    4.0 / (1.0 + (Math.exp (~x))) - 2.0
 end

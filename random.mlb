@@ -1,0 +1,9 @@
+local
+$(SML_LIB)/basis/basis.mlb
+local $(SML_LIB)/basis/mlton.mlb in
+   signature MLTON_RANDOM
+   structure MLton
+ end
+in
+mlrandom.sml
+end
