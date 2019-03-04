@@ -56,24 +56,38 @@ fun forward rnn input =
     let
         fun time_t (record, x_t) =
             let
-                val _ = print "==== once begin ====\n"
+                (* val _ = print "==== once begin ====\n" *)
                 val x_t = M.transpose x_t
-                val (c_t_pre, h_t_pre) =
+                (* val _ = print ("x_t: " ^ (M.toString x_t)) *)
+                val (c_t_pre, h_t_pre, y_t_0_pre) =
                     case record of
-                        [] => ((M.make (hidenode, 1, 0.0)), (M.make (hidenode, 1, 0.0)))
-                      | {c_t = c_t_pre, h_t = h_t_pre, ...} :: _ => (c_t_pre, h_t_pre)
+                        [] => ((M.make (hidenode, 1, 0.0)), (M.make (hidenode, 1, 0.0)),
+                               (M.make (outnode, 1, 0.0)))
+                      | {c_t = c_t_pre, h_t = h_t_pre, y_t_0 = y_t_0_pre, ...} :: _ =>
+                        (c_t_pre, h_t_pre, y_t_0_pre)
                 fun cal_flow w u nonlinear =
                     M.map nonlinear (M.add (M.mul w x_t) (M.mul u h_t_pre))
-                val a_t = cal_flow w_c u_c N.tanh
+                val a_t = cal_flow w_c u_c N.sigmoid
+                (* val _ = print ("a_t: " ^ (M.toString a_t)) *)
                 val i_t = cal_flow w_i u_i N.sigmoid
                 val f_t = cal_flow w_f u_f N.sigmoid
                 val o_t = cal_flow w_o u_o N.sigmoid
+                (* val _ = print ("a_t: " ^ (Real.toString (M.sub a_t (0, 0)))) *)
+                (* val _ = print ("i_t: " ^ (Real.toString (M.sub i_t (0, 0)))) *)
+                (* val _ = print ("f_t: " ^ (Real.toString (M.sub f_t (0, 0)))) *)
+                (* val _ = print ("o_t: " ^ (Real.toString (M.sub o_t (0, 0)))) *)
+                (* val _ = print ("c_t_pre: " ^ (Real.toString (M.sub c_t_pre (0, 0)))) *)
+                (* val _ = print ("tmp2: " ^ (Real.toString (M.sub (M.elemwise f_t c_t_pre) (0, 0)))) *)
                 val c_t = (M.add (M.elemwise i_t a_t) (M.elemwise f_t c_t_pre))
+                (* val _ = print ("c_t: " ^ (M.toString c_t)) *)
                 val h_t = M.elemwise o_t (M.map N.tanh c_t)
+                                     (* TODO: i_t -> o_t *)
                 val y_t_0 = M.mul w_out h_t
-                val _ = print (M.toString y_t_0)
+                (* val _ = print ("tmp_t: " ^ (M.toString (M.mul w_out h_t)) ^ "\n") *)
+                (* val _ = print ("h_t: " ^ (M.toString h_t) ^ "\n") *)
                 val y_t = M.map N.sigmoid y_t_0
-                val _ = print "==== once end ====\n"
+                (* val _ = print ("y_t: " ^ (M.toString y_t) ^ "\n") *)
+                (* val _ = print "==== once end ====\n" *)
                 val his = {c_t_pre, h_t_pre, a_t, i_t, f_t, o_t, c_t, h_t, y_t_0, y_t}
             in
                 his :: record
@@ -92,50 +106,76 @@ fun forward rnn input =
 fun backward rnn his_l input ans alpha =
     case rnn of {w_i, u_i, w_c, u_c, w_f, u_f, w_o, u_o, w_out} =>
     let
+        val size = List.length his_l
         fun time_t (backrecord, i, record) =
             case record of
                 {c_t_pre, h_t_pre, a_t, i_t, f_t, o_t, c_t, h_t, y_t_0, y_t}
                 =>
                   let
-                      val y_ans_t = M.row ans i
-                      val x_t = M.row input i
+                      val y_ans_t = M.row ans (size - 1 - i)
+                      val x_t = M.transpose (M.row input (size - 1 - i))
                       val (perr_pi_post, perr_pf_post, perr_po_post,
                            perr_pa_post, perr_pc_post, f_t_post) =
                           case backrecord of
-                              NONE => (M.make (hidenode, 1, 0.0), M.make (hidenode, 1, 0.0),
-                                       M.make (hidenode, 1, 0.0), M.make (hidenode, 1, 0.0),
-                                       M.make (hidenode, 1, 0.0), M.make (hidenode, 1, 0.0))
+                              NONE => (M.make (1, hidenode, 0.0), M.make (1, hidenode, 0.0),
+                                       M.make (1, hidenode, 0.0), M.make (1, hidenode, 0.0),
+                                       M.make (1, hidenode, 0.0), M.make (hidenode, 1, 0.0))
                             | SOME {perr_pi_post, perr_pf_post, perr_po_post,
                                perr_pa_post, perr_pc_post, f_t_post} =>
                               (perr_pi_post, perr_pf_post, perr_po_post,
                                perr_pa_post, perr_pc_post, f_t_post)
                       val y_t = M.squeeze12 y_t
                       val y_ans_t = M.squeeze12 y_ans_t
-                      val perr_py = (y_t - y_ans_t) * (N.dsigmoid y_t)
-                      val perr_py = M.make (1, 1, perr_py)
+                      (* val _ = print ("y_t: " ^ (Real.toString y_t) ^ "\n") *)
+                      (* val _ = print ("y_ans_t: " ^ (Real.toString y_ans_t) ^ "\n") *)
+                      (* val _ = print ("(N.dsigmoid y_t): " ^ (Real.toString (N.dsigmoid y_t)) ^ "\n") *)
+                      val perr_py = (y_ans_t - y_t) * (N.dsigmoid y_t)
+                      (* val _ = print ("y_delta: " ^ (Real.toString perr_py) ^ "\n") *)
+                      (* val _ = print ("y_delta: " ^ (M.toString (M.transpose h_t)) ^ "\n") *)
+                      val _ = M.add_modify w_out (M.mulscalar (M.transpose h_t) (alpha * perr_py) )
+                      (* val _ = print ("w_out: " ^ (M.toString w_out) ^ "\n") *)
+                      val perr_py = M.make (1, outnode, perr_py)
                       val perr_ph = List.foldl (fn ((p, w), b) => M.add (M.mul p w) b)
                                                 (M.mul perr_py w_out)
                                                 [(perr_pi_post, u_i),
                                                  (perr_pf_post, u_f),
                                                  (perr_po_post, u_o),
                                                  (perr_pa_post, u_c)]
-                      val perr_po = List.foldl (fn (a ,b) => M.elemwise a b)
+                      (* val _ = print ("perr_pf_post: " ^ (M.toString perr_pf_post) ^ "\n") *)
+                      (* val _ = print ("f_t_post: " ^ (M.toString f_t_post) ^ "\n") *)
+                      (* val _ = print ("perr_pc_post: " ^ (M.toString perr_pc_post) ^ "\n") *)
+                      val _ = print ("tmp: " ^ (M.toString (M.mul perr_pi_post u_i)) ^ "\n")
+                      (* val _ = print ("tmp: " ^ (M.toString (M.mul perr_py w_out)) ^ "\n") *)
+                      (* val _ = print ("perr_ph: " ^ (M.toString perr_ph) ^ "\n") *)
+                      val perr_po = List.foldl (fn (a, b) => M.elemwise (M.transpose a) b)
                                                 perr_ph
-                                                [(M.map N.dtanh c_t), (M.map N.dsigmoid o_t)]
+                                                [(M.map N.tanh c_t), (M.map N.dsigmoid o_t)]
+                      (* val _ = print ("perr_po: " ^ (M.toString perr_po) ^ "\n") *)
+                      (* val _ = print ("perr_po: " ^ (M.toString  (M.elemwise perr_pc_post (M.transpose f_t_post))) ^ "\n") *)
                       val perr_pc = M.add
-                          (M.elemwise (M.elemwise perr_ph o_t) (M.map N.dtanh c_t))
-                          (M.elemwise perr_pc_post f_t_post)
-                      val perr_pf = M.elemwise (M.elemwise perr_pc c_t_pre) (M.map N.dsigmoid f_t)
-                      val perr_pi = M.elemwise (M.elemwise perr_pc a_t) (M.map N.dsigmoid i_t)
-                      val perr_pa = M.elemwise (M.elemwise perr_pc i_t) (M.map N.dsigmoid a_t)
-                      val _ = M.add_modify u_i (M.map (fn a => a * alpha) (M.mul h_t_pre (M.transpose perr_pi)))
-                      val _ = M.add_modify u_f (M.map (fn a => a * alpha) (M.mul h_t_pre (M.transpose perr_pf)))
-                      val _ = M.add_modify u_o (M.map (fn a => a * alpha) (M.mul h_t_pre (M.transpose perr_po)))
-                      val _ = M.add_modify u_c (M.map (fn a => a * alpha) (M.mul h_t_pre (M.transpose perr_pa)))
-                      val _ = M.add_modify w_i (M.map (fn a => a * alpha) (M.mul x_t (M.transpose perr_pi)))
-                      val _ = M.add_modify w_f (M.map (fn a => a * alpha) (M.mul x_t (M.transpose perr_pf)))
-                      val _ = M.add_modify w_o (M.map (fn a => a * alpha) (M.mul x_t (M.transpose perr_po)))
-                      val _ = M.add_modify w_c (M.map (fn a => a * alpha) (M.mul x_t (M.transpose perr_pa)))
+                                        (M.elemwise (M.elemwise perr_ph (M.transpose o_t))
+                                                    (M.map N.dtanh (M.transpose c_t)))
+                                        (M.elemwise perr_pc_post (M.transpose f_t_post))
+                      (* val _ = print ("perr_pc: " ^ (M.toString perr_pc) ^ "\n") *)
+                      val perr_pf = M.elemwise (M.elemwise perr_pc (M.transpose c_t_pre))
+                                               (M.map N.dsigmoid (M.transpose f_t))
+                      (* val _ = print ("perr_pf: " ^ (M.toString perr_pf) ^ "\n") *)
+                      val perr_pi = M.elemwise (M.elemwise perr_pc (M.transpose a_t))
+                                               (M.map N.dsigmoid (M.transpose i_t))
+                      (* val _ = print ("perr_pi: " ^ (M.toString perr_pi) ^ "\n") *)
+                      val perr_pa = M.elemwise (M.elemwise perr_pc (M.transpose i_t))
+                                               (M.map N.dsigmoid (M.transpose a_t))
+                      (* val _ = print ("perr_pa: " ^ (M.toString perr_pa) ^ "\n") *)
+                      val _ = M.add_modify u_i (M.transpose (M.mulscalar  (M.mul h_t_pre perr_pi) alpha))
+                      val _ = M.add_modify u_f (M.transpose (M.mulscalar  (M.mul h_t_pre perr_pf) alpha))
+                      val _ = M.add_modify u_o (M.transpose (M.mulscalar  (M.mul h_t_pre perr_po) alpha))
+                      val _ = M.add_modify u_c (M.transpose (M.mulscalar  (M.mul h_t_pre perr_pa) alpha))
+                      val _ = M.add_modify w_i (M.transpose (M.mulscalar  (M.mul x_t perr_pi) alpha))
+                      val _ = M.add_modify w_f (M.transpose (M.mulscalar  (M.mul x_t perr_pf) alpha))
+                      val _ = M.add_modify w_o (M.transpose (M.mulscalar  (M.mul x_t perr_po) alpha))
+                      val _ = M.add_modify w_c (M.transpose (M.mulscalar  (M.mul x_t perr_pa) alpha))
+                      (* val _ = print ("u_o: " ^ (M.toString u_o) ^ "\n") *)
+                      (* val _ = print ("w_c: " ^ (M.toString w_c) ^ "\n") *)
                   in
                       SOME {perr_pi_post = perr_pi, perr_pf_post = perr_pf, perr_po_post = perr_po,
                             perr_pa_post = perr_pa, perr_pc_post = perr_pc, f_t_post = f_t}
@@ -146,7 +186,7 @@ fun backward rnn his_l input ans alpha =
     end
 
 
-(* fun backword rnn history_l input output ans alpha = *)
+(* fun backword rnn history_l input output ans  = *)
 (*     let *)
 (*         fun cal_err (y_t, y_ans_t) = (mysq (y_t - y_ans_t)) / 2.0 *)
 (*         val err = Mlv.map2 cal_err output ans *)
@@ -158,7 +198,7 @@ fun backward rnn his_l input ans alpha =
 (*                 let *)
 (*                     val _ = *)
 (*                         M.modifyi (fn (_, j, e) => *)
-(*                                       e + alpha * err_t * (Mlv.sub h_1_t j)) w_out *)
+(*                                       e +  * err_t * (Mlv.sub h_1_t j)) w_out *)
 (*                     val h_1_delta = List.foldl (fn (e, r) = Mlv.add e r) *)
 (*                                              (M.matmulvect w_out y_delta) *)
 (*                                              [(M.matmulvect u_i i_0_delta'), *)
@@ -182,7 +222,7 @@ fun backward rnn his_l input ans alpha =
 (*                                              s_1_delta i_0_t g_0_t *)
 (*                     fun updat_u (u, u_delta) = *)
 (*                         M.modifyi (fn (i, j, e) => *)
-(*                                       e + alpha * (Mlv.sub u_delta j) * (Mlv.sub h_0_t i)) *)
+(*                                       e +  * (Mlv.sub u_delta j) * (Mlv.sub h_0_t i)) *)
 (*                                   u *)
 (*                     val _ = List.foldl (fn (e, _) => update_u e) () *)
 (*                                        [(u_i, i_0_delta), *)
@@ -191,7 +231,7 @@ fun backward rnn his_l input ans alpha =
 (*                                         (u_c, g_0_delta)] *)
 (*                     fun updat_w (w, w_delta) = *)
 (*                         M.modifyi (fn (i, j, e) => *)
-(*                                       e + alpha * (Mlv.sub w_delta j) * (Mlv.sub x_t i)) *)
+(*                                       e +  * (Mlv.sub w_delta j) * (Mlv.sub x_t i)) *)
 (*                                   w *)
 (*                     val _ = List.foldl (fn (e, _) => update_w e) () *)
 (*                                        [(w_i, i_0_delta), *)

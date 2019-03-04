@@ -178,6 +178,8 @@ fun transpose mat =
     in
         mat'
     end
+fun mulscalar mat a =
+    map (fn e => a * e) mat
 fun mul mat1 mat2 =
     let
         val (h1, w1) = size mat1
@@ -204,7 +206,7 @@ fun elemwise mat1 mat2 =
     let
         val mat3 = copy mat1
         fun f (i, j, e) =
-            e + (sub mat2 (i, j))
+            e * (sub mat2 (i, j))
         val _ = modifyi f mat3
     in
        mat3

@@ -62,6 +62,7 @@ sig
     val foldrowl : ('a * mlmatrix -> 'a) -> 'a -> mlmatrix -> 'a
 
     val transpose : mlmatrix -> mlmatrix
+    val mulscalar : mlmatrix -> scalar -> mlmatrix
     val mul : mlmatrix -> mlmatrix -> mlmatrix
     val add : mlmatrix -> mlmatrix -> mlmatrix
     val add_modify : mlmatrix -> mlmatrix -> unit

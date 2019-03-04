@@ -1,3 +1,4 @@
 $(SML_LIB)/basis/basis.mlb
 MATRIX.sml
 RealMatrix.sml
+matrix_test.sml
