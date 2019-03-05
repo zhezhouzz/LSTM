@@ -31,7 +31,7 @@ let
         let
             val (output, record_l) = Rnn.forward rnn input
             (* val _ = print (Mlmatrix.toString output) *)
-            val _ = Rnn.backward rnn record_l input ans 10.0
+            val _ = Rnn.backward rnn record_l input ans 0.1
         in
             train (k - 1)
         end
