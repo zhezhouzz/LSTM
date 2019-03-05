@@ -9,7 +9,7 @@ using namespace std;
 #define innode  2       //输入结点数，将输入2个加数
 #define hidenode  26    //隐藏结点数，存储“携带位”
 #define outnode  1      //输出结点数，将输出一个预测数字
-#define alpha  0.1      //学习速率
+#define alpha  0.5      //学习速率
 #define binary_dim 8    //二进制数的最大长度
 
 #define randval(high) ( (double)rand() / RAND_MAX * high )
@@ -137,7 +137,7 @@ void RNN::train()
     vector<double*> h_vector;      //输出值
     vector<double> y_delta;        //保存误差关于输出层的偏导
 
-    for(epoch=0; epoch<1; epoch++)  //训练次数
+    for(epoch=0; epoch<10000; epoch++)  //训练次数
     {
         double e = 0.0;  //误差
 
@@ -400,13 +400,13 @@ void RNN::train()
                 // }
 
             }
-            std::cout << std::endl;
+            // std::cout << std::endl;
             // print_double_mat("W_out:\n", (double*)W_out, hidenode, outnode);
             // print_double_arr("O_delta: ", O_delta, hidenode);
             // print_double_arr("state_delta: ", state_delta, hidenode);
             // print_double_arr("F_delta: ", F_delta, hidenode);
             // print_double_arr("I_delta: ", I_delta, hidenode);
-            print_double_arr("G_delta: ", G_delta, hidenode);
+            // print_double_arr("G_delta: ", G_delta, hidenode);
             // print_double_mat("U_O:\n", (double*)U_O, hidenode, hidenode);
             // print_double_mat("W_G:\n", (double*)W_G, innode, hidenode); 
 

@@ -9,27 +9,27 @@ end
 
 functor Binary (H: HYPERPARAM) : BINARY=
 struct
-type binary = bool list
+type binary = real array
 val length = H.binary_dim
 val max =
-    let
-        fun aux i = if i = 0 then [] else true :: (aux (i - 1))
-    in
-        aux length
-    end
+    Array.array (length, 1.0)
 val zero =
-    let
-        fun aux i = if i = 0 then [] else false :: (aux (i - 1))
-    in
-        aux length
-    end
+    Array.array (length, 0.0)
 fun fromInt i =
     let
-        fun aux i = if i = 1 then [true] else [false]
-        fun i2b i =
-            if i < 2 then (aux i) else
-            (aux (i mod 2)) @ (i2b (i div 2))
+        val result = Array.array (length, 0.0)
+        fun aux i = if i = 1 then 1.0 else 0.0
+        fun i2b i num =
+            if i = length then () else
+            let
+                val r = aux (num mod 2)
+                val num = num div 2
+                val _ = Array.update (result, i, r)
+            in
+                i2b (i+1) num
+            end
+        val _ = i2b 0 i
     in
-        List.rev (i2b i)
+        result
     end
 end

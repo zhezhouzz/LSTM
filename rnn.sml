@@ -98,7 +98,7 @@ fun forward rnn input =
                                  {y_t = y_t, ...}
                                  =>
                              M.squeeze2 y_t) record_l
-        val y = Array.fromList y
+        val y = Array.fromList (List.rev y)
     in
         (y, record_l)
     end
@@ -246,7 +246,7 @@ fun backward rnn his_l input ans alpha =
                                     (M.make (1, hidenode, 0.0)),
                                     (M.make (1, hidenode, 0.0)),
                                     (M.make (1, hidenode, 0.0)))
-                      val _ = print ("perr_pa: " ^ (M.toString perr_pa_cur) ^ "\n")
+                      (* val _ = print ("perr_pa: " ^ (M.toString perr_pa_cur) ^ "\n") *)
                   in
                       SOME {perr_pi_post = perr_pi_cur,
                             perr_pf_post = perr_pf_cur,
