@@ -9,7 +9,7 @@ using namespace std;
 #define innode  2       //输入结点数，将输入2个加数
 #define hidenode  26    //隐藏结点数，存储“携带位”
 #define outnode  1      //输出结点数，将输出一个预测数字
-#define alpha  0.5      //学习速率
+#define alpha  0.1      //学习速率
 #define binary_dim 8    //二进制数的最大长度
 
 #define randval(high) ( (double)rand() / RAND_MAX * high )
@@ -102,7 +102,8 @@ public:
 void winit(double w[], int n) //权值初始化
 {
     for(int i=0; i<n; i++)
-        w[i] = 0.1;  //均匀随机分布
+      w[i] = uniform_plus_minus_one;
+        // w[i] = 0.1;  //均匀随机分布
 }
 
 RNN::RNN()
@@ -144,14 +145,14 @@ void RNN::train()
         int predict[binary_dim];               //保存每次生成的预测值
         memset(predict, 0, sizeof(predict));
 
-        // int a_int = (int)randval(largest_number/2.0);  //随机生成一个加数 a
-        int a_int = 86;
+        int a_int = (int)randval(largest_number/2.0);  //随机生成一个加数 a
+        // int a_int = 86;
         int a[binary_dim];
         int2binary(a_int, a);                 //转为二进制数
         // print_int_arr("binary a: ", a, binary_dim);
 
-        // int b_int = (int)randval(largest_number/2.0);  //随机生成另一个加数 b
-        int b_int = 1;
+        int b_int = (int)randval(largest_number/2.0);  //随机生成另一个加数 b
+        // int b_int = 1;
         int b[binary_dim];
         int2binary(b_int, b);                 //转为二进制数
         // print_int_arr("binary b: ", b, binary_dim);
