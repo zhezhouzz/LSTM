@@ -1,0 +1,12 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/basis/mlton.mlb
+utils.sml
+mlrandom.sml
+hyperparam.sml
+nonlinear.sml
+binary.sml
+matrix.sml
+MATRIX.sml
+RealMatrix.sml
+rnn.sml
+test_mat.sml

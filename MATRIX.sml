@@ -5,6 +5,7 @@ sig
     exception badDimension
 	  exception notInvertable
     val size : mlvector -> int
+    val make : (int * scalar) -> mlvector
     val mlvector : (int -> scalar) -> int -> mlvector
     val sub : mlvector -> int -> scalar
     val update : (scalar -> scalar) -> mlvector -> int -> unit
@@ -40,6 +41,7 @@ sig
 	  val sub : mlmatrix -> (int * int) -> scalar
 	  val row : mlmatrix -> int -> mlmatrix
     val col : mlmatrix -> int -> mlmatrix
+    val set : mlmatrix -> (int * int * scalar) -> unit
 	  val update : (scalar -> scalar) -> mlmatrix -> (int * int) -> unit
     val modify : (scalar -> scalar) -> mlmatrix -> unit
     val modifyi : ((int * int * scalar) -> scalar) -> mlmatrix -> unit
@@ -53,6 +55,7 @@ sig
 	  (* val inv : mlmatrix -> mlmatrix *)
 
 	  val map : (scalar -> scalar) -> mlmatrix -> mlmatrix
+	  val map_inplace : (scalar -> scalar) -> mlmatrix -> mlmatrix
 	  val mapi : ((int * int * scalar) -> scalar) -> mlmatrix -> mlmatrix
     val map2 : ((scalar * scalar) -> scalar) -> mlmatrix -> mlmatrix -> mlmatrix
     val map2i : ((int * int * scalar * scalar) -> scalar) -> mlmatrix -> mlmatrix -> mlmatrix
@@ -65,8 +68,10 @@ sig
     val mulscalar : mlmatrix -> scalar -> mlmatrix
     val mul : mlmatrix -> mlmatrix -> mlmatrix
     val add : mlmatrix -> mlmatrix -> mlmatrix
+    val add_inplace : mlmatrix -> mlmatrix -> mlmatrix
     val add_modify : mlmatrix -> mlmatrix -> unit
 	  val elemwise : mlmatrix -> mlmatrix -> mlmatrix
+	  val elemwise_inplace : mlmatrix -> mlmatrix -> mlmatrix
     val matmulvec : mlmatrix -> mlvector -> mlvector
 	  val fromArray2 : scalar array array -> mlmatrix
 	  val fromList : scalar list list -> mlmatrix

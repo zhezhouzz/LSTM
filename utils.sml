@@ -1,6 +1,14 @@
 fun intpow a b =
     if b = 0 then 1 else a * (intpow a (b - 1));
 fun mysq (a: real) : real = a * a
+fun print_list l f =
+    case l of [] => print "\n"
+            | h::t =>
+              let
+                  val _ = print ((f h) ^ ", ")
+              in
+                  print_list t f
+              end
 fun list_mapi f l =
     let
         fun aux l i =

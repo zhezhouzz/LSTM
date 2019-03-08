@@ -63,12 +63,12 @@ fun forward rnn input =
                       | {c_t = c_t_pre, h_t = h_t_pre, y_t_0 = y_t_0_pre, ...} :: _ =>
                         (c_t_pre, h_t_pre, y_t_0_pre)
                 fun cal_flow w u nonlinear =
-                    M.map nonlinear (M.add (M.mul w x_t) (M.mul u h_t_pre))
+                    M.map_inplace nonlinear (M.add_inplace (M.mul w x_t) (M.mul u h_t_pre))
                 val a_t = cal_flow w_c u_c N.sigmoid
                 val i_t = cal_flow w_i u_i N.sigmoid
                 val f_t = cal_flow w_f u_f N.sigmoid
                 val o_t = cal_flow w_o u_o N.sigmoid
-                val c_t = (M.add (M.elemwise i_t a_t) (M.elemwise f_t c_t_pre))
+                val c_t = (M.add_inplace (M.elemwise i_t a_t) (M.elemwise f_t c_t_pre))
                 val h_t = M.elemwise o_t (M.map N.tanh c_t)
                 val y_t_0 = M.mul w_out h_t
                 val y_t = M.map N.sigmoid y_t_0
@@ -140,18 +140,18 @@ fun backward rnn his_l input ans alpha =
                                                         (perr_pf_post, u_f_idx),
                                                         (perr_po_post, u_o_idx),
                                                         (perr_pa_post, u_c_idx)]
-                              val perr_po = List.foldl (fn (a, b) => M.elemwise (M.transpose a) b)
+                              val perr_po = List.foldl (fn (a, b) => M.elemwise_inplace (M.transpose a) b)
                                                        perr_ph
                                                        [(M.map N.tanh c_t_idx), (M.map N.dsigmoid o_t_idx)]
-                              val perr_pc = M.add
-                                        (M.elemwise (M.elemwise perr_ph (M.transpose o_t_idx))
+                              val perr_pc = M.add_inplace
+                                                (M.elemwise_inplace (M.elemwise perr_ph (M.transpose o_t_idx))
                                                     (M.map N.dtanh (M.transpose c_t_idx)))
-                                        (M.elemwise perr_pc_post_idx (M.transpose f_t_post_idx))
-                              val perr_pf = M.elemwise (M.elemwise perr_pc (M.transpose c_t_pre_idx))
+                                                (M.elemwise_inplace perr_pc_post_idx (M.transpose f_t_post_idx))
+                              val perr_pf = M.elemwise_inplace (M.elemwise perr_pc (M.transpose c_t_pre_idx))
                                                        (M.map N.dsigmoid (M.transpose f_t_idx))
-                              val perr_pi = M.elemwise (M.elemwise perr_pc (M.transpose a_t_idx))
+                              val perr_pi = M.elemwise_inplace (M.elemwise perr_pc (M.transpose a_t_idx))
                                                        (M.map N.dsigmoid (M.transpose i_t_idx))
-                              val perr_pa = M.elemwise (M.elemwise perr_pc (M.transpose i_t_idx))
+                              val perr_pa = M.elemwise_inplace (M.elemwise perr_pc (M.transpose i_t_idx))
                                                        (M.map N.dsigmoid (M.transpose a_t_idx))
                               fun update_w ((w, input, p), _) =
                                   M.add_modify w (M.transpose (M.mulscalar (M.mul input p) alpha))

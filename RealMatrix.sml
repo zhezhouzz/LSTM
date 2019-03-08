@@ -7,6 +7,8 @@ exception notInvertable
 
 fun size v =
     Array.length v
+fun make (num, e) =
+    Array.array (num, e)
 fun mlvector f num =
     let
         val v = Array.array (num, 0.0)
@@ -68,6 +70,7 @@ type mlvector = Mlv.mlvector
 type mlmatrix = real array array
 
 exception badError
+exception badDimension
 
 fun size mat =
     let
@@ -86,12 +89,19 @@ fun matrix f num =
     end
 fun make (h, w, v) =
     let
-        fun f i = Mlv.mlvector (fn _ => v) w
+        fun f i = Mlv.make (w, v)
     in
         matrix f h
     end
 fun sub mat (i, j) =
     Array.sub ((Array.sub (mat, i)), j)
+fun set mat (i, j, e) =
+    let
+        val arr = Array.sub (mat, i)
+        val _ = Array.update (arr, j, e)
+    in
+        ()
+    end
 fun update f mat (i, j) =
     let
         val e = sub mat (i, j)
@@ -142,6 +152,12 @@ fun map f mat =
     in
         mat'
     end
+fun map_inplace f mat =
+    let
+        val _ = modify f mat
+    in
+        mat
+    end
 fun mapi f mat =
     let
         val mat' = copy mat
@@ -184,24 +200,54 @@ fun mul mat1 mat2 =
     let
         val (h1, w1) = size mat1
         val (h2, w2) = size mat2
-        val mat3 = make (h1, w2, 0.0)
-        val mat2' = transpose mat2
-        fun f (i, j, e) =
-            let
-                val row = Array.sub (mat1, i)
-                val col = Array.sub (mat2', j)
-                val e' = Mlv.dot row col
-            in
-                e'
-            end
-        val _ = modifyi f mat3
     in
-        mat3
+        if w1 <> h2 then raise badDimension else
+        let
+            val mat3 = make (h1, w2, 0.0)
+            fun f (i, j) =
+                let
+                    fun dot k =
+                        if k = w1 then 0.0 else
+                        let
+                            val v = (sub mat1 (i, k)) * (sub mat2 (k, j))
+                            val k = k + 1
+                        in
+                            v + (dot k)
+                        end
+                    val v = dot 0
+                in
+                    set mat3 (i, j, v)
+                end
+            fun aux i j =
+                if j = w2 then () else
+                let
+                    val _ = f (i, j)
+                in
+                    aux i (j + 1)
+                end
+            fun aux' i =
+                if i = h1 then () else
+                let
+                    val _ = aux i 0
+                in
+                    aux' (i + 1)
+                end
+            val _ = aux' 0
+        in
+            mat3
+        end
     end
+
 fun add mat1 mat2 =
     map2 (fn (a, b) => a + b) mat1 mat2
 fun add_modify (mat1: mlmatrix) mat2 =
     modifyi (fn (i, j, e) => e + (sub mat2 (i, j))) mat1
+fun add_inplace mat1 mat2 =
+    let
+        val _ = add_modify mat1 mat2
+    in
+        mat1
+    end
 fun elemwise mat1 mat2 =
     let
         val mat3 = copy mat1
@@ -211,9 +257,17 @@ fun elemwise mat1 mat2 =
     in
        mat3
     end
+fun elemwise_inplace (mat1: mlmatrix) mat2 =
+    let
+        fun f (i, j, e) =
+            e * (sub mat2 (i, j))
+        val _ = modifyi f mat1
+    in
+        mat1
+    end
 fun matmulvec mat vec =
     let
-        val result = Mlv.mlvector (fn _ => 0.0) (Array.length mat)
+        val result = Mlv.make ((Array.length mat), 0.0)
         fun f (i, _) = Mlv.dot (Array.sub (mat, i)) vec
         val _ = Array.modifyi f result
     in
