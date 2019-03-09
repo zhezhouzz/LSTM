@@ -8,6 +8,7 @@ sig
     val make : (int * scalar) -> mlvector
     val mlvector : (int -> scalar) -> int -> mlvector
     val sub : mlvector -> int -> scalar
+    val set : mlvector -> (int * scalar) -> unit
     val update : (scalar -> scalar) -> mlvector -> int -> unit
     val modify : (scalar -> scalar) -> mlvector -> unit
     val modifyi : ((int * scalar) -> scalar) -> mlvector -> unit

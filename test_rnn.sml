@@ -70,7 +70,7 @@ let
         in
             train (k - 1)
         end
-    val _ = train 100
+    val _ = train 4000
     val _ = print (Mlmatrix.toString input)
     val (output, record_l) = Rnn.forward rnn input
     val _ = print (Mlmatrix.toString output)

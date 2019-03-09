@@ -19,6 +19,8 @@ let
     val _ = print (Mlmatrix.toString d)
     val _ = Mlmatrix.set d (0, 0, 1.0)
     val _ = print (Mlmatrix.toString d)
+    val _ = Mlmatrix.modifyi (fn (_, _, a) => a + 1.0) d
+    val _ = print (Mlmatrix.toString d)
 in
     ()
 end;

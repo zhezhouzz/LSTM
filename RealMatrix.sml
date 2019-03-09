@@ -18,6 +18,8 @@ fun mlvector f num =
     end
 fun sub v i =
     Array.sub (v, i)
+fun set v (i, e) =
+    Array.update (v, i, e)
 fun update f v i =
     let
         val value = sub v i
@@ -27,7 +29,20 @@ fun update f v i =
 fun modify f v = Array.modify f v
 fun modifyi f v = Array.modifyi f v
 fun foldl f r v = Array.foldl (fn (e, r) => f (r, e)) r v
-fun foldli f r v = Array.foldli (fn (i, e, r) => f (r, i, e)) r v
+fun foldli f r v =
+    let
+        val len = size v
+        fun aux i r =
+            if i = len then r else
+            let
+                val e = Array.sub (v, i)
+                val r = f (r, i, e)
+            in
+                aux (i+1) r
+            end
+    in
+        aux 0 r
+    end
 fun copy v = mlvector (fn i => sub v i) (size v)
 fun squeeze v = sub v 0
 fun map f v =
@@ -113,7 +128,29 @@ fun update f mat (i, j) =
 fun modify f mat =
     Array.foldl (fn (arr, _) => Array.modify f arr) () mat
 fun modifyi f mat =
-    Array.foldli (fn (i, arr, _) => Array.modifyi (fn (j, e) => f (i, j, e)) arr) () mat
+    let
+        val (h, w) = size mat
+        fun aux i =
+            if i = h then () else
+            let
+                val arr = Array.sub (mat, i)
+                fun aux' j =
+                    if j = w then () else
+                    let
+                        val e = Array.sub (arr, j)
+                        val e = f (i, j, e)
+                        val _ = Array.update (arr, j, e)
+                    in
+                        aux' (j+1)
+                    end
+                val _ = aux' 0
+                val _ = Array.update (mat, i, arr)
+            in
+                aux (i+1)
+            end
+    in
+        aux 0
+    end
 fun row mat i =
     Array.array (1, (Mlv.copy (Array.sub (mat, i))))
 fun col mat j =
@@ -182,7 +219,27 @@ fun map2i f mat1 mat2 =
 fun foldl f r mat =
     Array.foldl (fn (arr, r) => Mlv.foldl f r arr) r mat
 fun foldli f r mat =
-    Array.foldli (fn (i, arr, r) => Mlv.foldli (fn (r, j, e) => f (r, i, j ,e)) r arr) r mat
+    let
+        val (h, w) = size mat
+        fun aux i r =
+            if i = h then r else
+            let
+                val arr = Array.sub (mat, i)
+                fun aux' j r =
+                    if j = w then r else
+                    let
+                        val e = Array.sub (arr, j)
+                        val r = f (r, i, j, e)
+                    in
+                        aux' (j+1) r
+                    end
+                val r = aux' 0 r
+            in
+                aux (i+1) r
+            end
+    in
+        aux 0 r
+    end
 fun foldrowl f r mat =
     Array.foldl (fn (arr, r) => f (r, vec2mat arr)) r mat
 fun transpose mat =

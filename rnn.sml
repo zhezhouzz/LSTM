@@ -91,6 +91,11 @@ fun backward rnn his_l input ans alpha =
     case rnn of {w_i, u_i, w_c, u_c, w_f, u_f, w_o, u_o, w_out} =>
     let
         val size = List.length his_l
+        val perr_pi_post = M.make (1, hidenode, 0.0)
+        val perr_pf_post = M.make (1, hidenode, 0.0)
+        val perr_po_post = M.make (1, hidenode, 0.0)
+        val perr_pa_post = M.make (1, hidenode, 0.0)
+        val perr_pc_post = M.make (1, hidenode, 0.0)
         fun time_t (backrecord, i, record) =
             case record of
                 {c_t_pre, h_t_pre, a_t, i_t, f_t, o_t, c_t, h_t, y_t_0, y_t}
@@ -98,22 +103,16 @@ fun backward rnn his_l input ans alpha =
                   let
                       val y_ans_t = M.row ans (size - 1 - i)
                       val x_t = M.transpose (M.row input (size - 1 - i))
-                      val (perr_pi_post, perr_pf_post, perr_po_post,
-                           perr_pa_post, perr_pc_post, f_t_post) =
+                      val f_t_post =
                           case backrecord of
-                              NONE => (M.make (1, hidenode, 0.0), M.make (1, hidenode, 0.0),
-                                       M.make (1, hidenode, 0.0), M.make (1, hidenode, 0.0),
-                                       M.make (1, hidenode, 0.0), M.make (hidenode, 1, 0.0))
-                            | SOME {perr_pi_post, perr_pf_post, perr_po_post,
-                               perr_pa_post, perr_pc_post, f_t_post} =>
-                              (perr_pi_post, perr_pf_post, perr_po_post,
-                               perr_pa_post, perr_pc_post, f_t_post)
+                              NONE => M.make (hidenode, 1, 0.0)
+                            | SOME f_t => f_t
                       val y_t = M.squeeze12 y_t
                       val y_ans_t = M.squeeze12 y_ans_t
                       val perr_py = (y_ans_t - y_t) * (N.dsigmoid y_t)
                       val _ = M.add_modify w_out (M.mulscalar (M.transpose h_t) (alpha * perr_py) )
-                      fun update idx tmp =
-                          if idx = hidenode then tmp else
+                      fun update idx =
+                          if idx = hidenode then () else
                           let
                               val perr_py = M.make (1, outnode, perr_py)
                               fun onerow mat idx = M.mapi (fn (i, j, e) =>
@@ -134,7 +133,7 @@ fun backward rnn his_l input ans alpha =
                               val h_t_pre_idx = onerow h_t_pre idx
                               val f_t_post_idx = onerow f_t_post idx
                               val perr_pc_post_idx = onecol perr_pc_post idx
-                              val perr_ph = List.foldl (fn ((p, w), b) => M.add (M.mul p w) b)
+                              val perr_ph = List.foldl (fn ((p, w), b) => M.add_inplace (M.mul p w) b)
                                                        (M.mul perr_py w_out_idx)
                                                        [(perr_pi_post, u_i_idx),
                                                         (perr_pf_post, u_f_idx),
@@ -144,15 +143,15 @@ fun backward rnn his_l input ans alpha =
                                                        perr_ph
                                                        [(M.map N.tanh c_t_idx), (M.map N.dsigmoid o_t_idx)]
                               val perr_pc = M.add_inplace
-                                                (M.elemwise_inplace (M.elemwise perr_ph (M.transpose o_t_idx))
-                                                    (M.map N.dtanh (M.transpose c_t_idx)))
+                                                (M.elemwise_inplace (M.elemwise_inplace (M.transpose o_t_idx) perr_ph)
+                                                                    (M.map_inplace N.dtanh (M.transpose c_t_idx)))
                                                 (M.elemwise_inplace perr_pc_post_idx (M.transpose f_t_post_idx))
-                              val perr_pf = M.elemwise_inplace (M.elemwise perr_pc (M.transpose c_t_pre_idx))
-                                                       (M.map N.dsigmoid (M.transpose f_t_idx))
-                              val perr_pi = M.elemwise_inplace (M.elemwise perr_pc (M.transpose a_t_idx))
-                                                       (M.map N.dsigmoid (M.transpose i_t_idx))
-                              val perr_pa = M.elemwise_inplace (M.elemwise perr_pc (M.transpose i_t_idx))
-                                                       (M.map N.dsigmoid (M.transpose a_t_idx))
+                              val perr_pf = M.elemwise_inplace (M.elemwise_inplace (M.transpose c_t_pre_idx) perr_pc)
+                                                               (M.map_inplace N.dsigmoid (M.transpose f_t_idx))
+                              val perr_pi = M.elemwise_inplace (M.elemwise_inplace (M.transpose a_t_idx) perr_pc)
+                                                               (M.map_inplace N.dsigmoid (M.transpose i_t_idx))
+                              val perr_pa = M.elemwise_inplace (M.elemwise_inplace (M.transpose i_t_idx) perr_pc)
+                                                               (M.map_inplace N.dsigmoid (M.transpose a_t_idx))
                               fun update_w ((w, input, p), _) =
                                   M.add_modify w (M.transpose (M.mulscalar (M.mul input p) alpha))
                               val _ = List.foldl update_w ()
@@ -164,52 +163,20 @@ fun backward rnn his_l input ans alpha =
                                                   (w_f, x_t, perr_pf),
                                                   (w_o, x_t, perr_po),
                                                   (w_c, x_t, perr_pa)]
-                              val _ =
-                                  if i = 0 then () else
-                                  let
-                                      val _ = M.modifyi (fn (a0, a1, e) =>
-                                                            if a1 = idx then (M.sub perr_pi (0, a1)) else e) perr_pi_post
-                                      val _ = M.modifyi (fn (a0, a1, e) =>
-                                                            if a1 = idx then (M.sub perr_pf (0, a1)) else e) perr_pf_post
-                                      val _ = M.modifyi (fn (a0, a1, e) =>
-                                                            if a1 = idx then (M.sub perr_po (0, a1)) else e) perr_po_post
-                                      val _ = M.modifyi (fn (a0, a1, e) =>
-                                                            if a1 = idx then (M.sub perr_pa (0, a1)) else e) perr_pa_post
-                                      val _ = M.modifyi (fn (a0, a1, e) =>
-                                                            if a1 = idx then (M.sub perr_pc (0, a1)) else e) perr_pc_post
-                                  in
-                                      ()
-                                  end
-                              val _ =
-                                  case tmp of
-                                      (perr_pi_cur, perr_pf_cur, perr_po_cur,
-                                       perr_pa_cur, perr_pc_cur) =>
-                                      let
-                                          val _ = M.add_modify perr_pi_cur perr_pi
-                                          val _ = M.add_modify perr_pf_cur perr_pf
-                                          val _ = M.add_modify perr_po_cur perr_po
-                                          val _ = M.add_modify perr_pa_cur perr_pa
-                                          val _ = M.add_modify perr_pc_cur perr_pc
-                                      in
-                                          ()
-                                      end
+                              fun update_flow ((old, new), _) =
+                                  M.set old (0, idx, (M.sub new (0, idx)))
+                              val _ = List.foldl update_flow ()
+                                                 [(perr_pi_post, perr_pi),
+                                                  (perr_pf_post, perr_pf),
+                                                  (perr_po_post, perr_po),
+                                                  (perr_pa_post, perr_pa),
+                                                  (perr_pc_post, perr_pc)]
                           in
-                              update (idx+1) tmp
+                              update (idx+1)
                           end
-                      val (perr_pi_cur, perr_pf_cur, perr_po_cur,
-                           perr_pa_cur, perr_pc_cur) =
-                          update 0 ((M.make (1, hidenode, 0.0)),
-                                    (M.make (1, hidenode, 0.0)),
-                                    (M.make (1, hidenode, 0.0)),
-                                    (M.make (1, hidenode, 0.0)),
-                                    (M.make (1, hidenode, 0.0)))
+                      val _ = update 0
                   in
-                      SOME {perr_pi_post = perr_pi_cur,
-                            perr_pf_post = perr_pf_cur,
-                            perr_po_post = perr_po_cur,
-                            perr_pa_post = perr_pa_cur,
-                            perr_pc_post = perr_pc_cur,
-                            f_t_post = f_t}
+                      SOME f_t
                   end
         val _ = list_foldli time_t NONE his_l
     in
