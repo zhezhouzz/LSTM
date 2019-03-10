@@ -96,7 +96,6 @@ fun backward rnn his_l input ans alpha =
         val perr_po_post = Mlv.make (hidenode, 0.0)
         val perr_pa_post = Mlv.make (hidenode, 0.0)
         val perr_pc_post = Mlv.make (hidenode, 0.0)
-        (* val _ = print ("wdsdsd\n") *)
         fun time_t (backrecord, i, record) =
             case record of
                 {c_t_pre, h_t_pre, a_t, i_t, f_t, o_t, c_t, h_t, y_t_0, y_t}
@@ -109,13 +108,10 @@ fun backward rnn his_l input ans alpha =
                           case backrecord of
                               NONE => M.make (hidenode, 1, 0.0)
                             | SOME f_t => f_t
-                      (* val _ = print ("y_ans_t = " ^ (Real.toString y_ans_t) ^ ", y_t' = " ^ (Real.toString y_t') ^ "\n") *)
                       val perr_py = (y_ans_t - y_t') * (N.dsigmoid y_t')
                       val _ = M.modifyi (fn (_, j, e) =>
                                                 e + alpha * (M.sub h_t (j, 0)) * perr_py
                                         ) w_out
-                      (* val _ = print ((Real.toString perr_py) ^ "\n") *)
-                      (* val _ = print ("w_out = " ^ (M.toString w_out) ^ "\n") *)
                       fun update idx =
                           if idx = hidenode then () else
                           let
@@ -139,10 +135,8 @@ fun backward rnn his_l input ans alpha =
                                                         (perr_pf_post, u_f_idx),
                                                         (perr_po_post, u_o_idx),
                                                         (perr_pa_post, u_c_idx)]
-                              (* val _ = print ("perr_ph = " ^ (Real.toString perr_ph) ^ "\n") *)
                               val perr_po = perr_ph * (N.tanh c_t_idx) * (N.dsigmoid o_t_idx)
                               val perr_pc = o_t_idx * perr_ph * (N.dtanh c_t_idx) + perr_pc_post_idx * f_t_post_idx
-                              (* val _ = print ("perr_pc = " ^ (Real.toString perr_pc) ^ "\n") *)
                               val perr_pf = c_t_pre_idx * perr_pc * (N.dsigmoid f_t_idx)
                               val perr_pi = a_t_idx *  perr_pc * (N.dsigmoid i_t_idx)
                               val perr_pa = i_t_idx * perr_pc * (N.dsigmoid a_t_idx)
@@ -170,8 +164,6 @@ fun backward rnn his_l input ans alpha =
                                                   (w_f, perr_pf),
                                                   (w_o, perr_po),
                                                   (w_c, perr_pa)]
-                              (* val  _ = print ("w_i = " ^ (M.toString w_i) ^ "\n") *)
-                              (* val  _ = print ("u_i = " ^ (M.toString u_i) ^ "\n") *)
                               fun update_flow ((old, new), _) =
                                   Mlv.set old (idx, new)
                               val _ = List.foldl update_flow ()
