@@ -21,6 +21,7 @@ sig
     val map2: ((scalar * scalar) -> scalar) -> mlvector -> mlvector -> mlvector
     val elemwise : mlvector -> mlvector -> mlvector
     val add : mlvector -> mlvector -> mlvector
+    val mulscalar : mlvector -> scalar -> mlvector
     val dot : mlvector -> mlvector -> real
     val toStringF : (scalar -> string) -> mlvector -> string
     val toString : mlvector -> string
@@ -42,6 +43,8 @@ sig
 	  val sub : mlmatrix -> (int * int) -> scalar
 	  val row : mlmatrix -> int -> mlmatrix
     val col : mlmatrix -> int -> mlmatrix
+    val onerow : mlmatrix -> int -> mlvector
+    val onecol : mlmatrix -> int -> mlvector
     val set : mlmatrix -> (int * int * scalar) -> unit
 	  val update : (scalar -> scalar) -> mlmatrix -> (int * int) -> unit
     val modify : (scalar -> scalar) -> mlmatrix -> unit

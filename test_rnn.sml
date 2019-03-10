@@ -32,6 +32,7 @@ fun data_gen () =
 let
     val _ = Mlrandom.init ()
     val rnn = Rnn.init (fn _ => Mlrandom.uniformReal (~1.0, 1.0))
+    (* val rnn = Rnn.init (fn _ => 0.1) *)
     val input = Mlmatrix.fromList
                     [[0.0, 1.0],
                      [1.0, 0.0],

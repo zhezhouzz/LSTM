@@ -63,6 +63,8 @@ fun map2 f v1 v2 =
     mapi (fn (i, e1) => f (e1, (sub v2 i))) v1
 fun add v1 v2 =
     map2 (fn (a, b) => a + b) v1 v2
+fun mulscalar v s =
+    map (fn e => s * e) v
 fun elemwise v1 v2 =
     map2 (fn (a, b) => a + b) v1 v2
 fun dot v1 v2 =
@@ -158,6 +160,15 @@ fun col mat j =
         val len = Array.length mat
         val result = make (len, 1, 0.0)
         val _ = modifyi (fn (i, _, _) => sub mat (i, j)) result
+    in
+        result
+    end
+fun onerow mat i = Array.sub (mat, i)
+fun onecol mat j =
+    let
+        val len = Array.length mat
+        val result = Mlv.make (len, 0.0)
+        val _ = Mlv.modifyi (fn (i, _) => sub mat (i, j)) result
     in
         result
     end
